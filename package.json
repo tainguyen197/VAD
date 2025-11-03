@@ -1,6 +1,16 @@
 {
+  "name": "audio-time",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
   "dependencies": {
     "@deepgram/sdk": "^4.11.2",
+    "@ricky0123/vad-react": "^0.0.35",
     "dotenv": "^17.2.3",
     "mic": "^2.1.2",
     "node-record-lpcm16": "^1.0.1",

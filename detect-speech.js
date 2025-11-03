@@ -13,6 +13,19 @@ const connection = deepgram.listen.live({
 
 connection.on(LiveTranscriptionEvents.Open, () => {
   console.log("Connected to Deepgram");
+
+  const recording = record.record({
+    sampleRate: 16000,
+    channel: 1,
+    audioType: "wav",
+  });
+
+  recording.start();
+
+  recording.stream().on("data", (chunk) => {
+    console.log("Sending chunk to Deepgram");
+    connection.send(chunk);
+  });
   connection.on(LiveTranscriptionEvents.Close, () => {
     console.log("Disconnected from Deepgram");
   });
@@ -27,18 +40,5 @@ connection.on(LiveTranscriptionEvents.Open, () => {
     console.error(error);
   });
 });
-
-const recording = record.record({
-  sampleRate: 16000,
-  channel: 1,
-  audioType: "wav",
-});
-
-recording.stream().on("data", (chunk) => {
-  console.log("Sending chunk to Deepgram");
-  connection.send(chunk);
-});
-
-recording.start();
 
 console.log("Listening to Deepgram...");
