@@ -8,6 +8,7 @@ import { floatTo16BitPCM } from "@/app/helpers";
 import { useMicVAD } from "@ricky0123/vad-react";
 import { useProcessTranscript, useProcessTranslate } from "@/hooks";
 import { useState } from "react";
+import { VisibilityFade } from "@/components";
 
 const baseAssetPath =
   "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/";
@@ -64,7 +65,6 @@ export default function Home() {
               </p>
             </div>
 
-            {/* Connection Status */}
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-900 border border-gray-800">
               <div
                 className={`w-2 h-2 rounded-full ${
@@ -200,28 +200,27 @@ export default function Home() {
                     sentences.length - displaySentences.length + index + 1;
 
                   return (
-                    <div
-                      key={index}
-                      className="group p-4 rounded-lg border border-gray-800 bg-gray-900/30 hover:border-gray-700 hover:bg-gray-900/50 animate-fadeIn"
-                    >
-                      <div className="flex gap-3">
-                        <span className="text-xs text-gray-600 font-mono mt-0.5 select-none">
-                          {String(sentenceNumber).padStart(2, "0")}
-                        </span>
-                        <div className="flex flex-col gap-1">
-                          <p className="text-gray-200 text-md leading-relaxed flex-1">
-                            {translations[index] || (
-                              <span className="text-gray-500">
-                                Translating...
-                              </span>
-                            )}
-                          </p>
-                          <p className="text-gray-500 text-xs leading-relaxed flex-1">
-                            {sentence}
-                          </p>
+                    <VisibilityFade key={index}>
+                      <div className="group p-4 rounded-lg border border-gray-800 bg-gray-900/30 hover:border-gray-700 hover:bg-gray-900/50">
+                        <div className="flex gap-3">
+                          <span className="text-xs text-gray-600 font-mono mt-0.5 select-none">
+                            {String(sentenceNumber).padStart(2, "0")}
+                          </span>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-gray-200 text-md leading-relaxed flex-1">
+                              {translations[index] || (
+                                <span className="text-gray-500">
+                                  Translating...
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-gray-500 text-xs leading-relaxed flex-1">
+                              {sentence}
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </VisibilityFade>
                   );
                 })}
               </div>
