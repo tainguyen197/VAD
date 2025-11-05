@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@google/genai": "^1.28.0",
     "@ricky0123/vad-react": "^0.0.35",
     "next": "16.0.1",
     "react": "19.2.0",
