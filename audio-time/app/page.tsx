@@ -277,7 +277,7 @@ export default function Home() {
                           </span>
                           <div className="flex-1 space-y-3">
                             {/* Translation - Prominent */}
-                            <div className="p-5 rounded-xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-900/30 hover:border-gray-700 transition-colors">
+                            <div className="p-3 rounded-xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-900/30 hover:border-gray-700 transition-colors">
                               <p className="text-white text-md leading-relaxed">
                                 {translations[index] || (
                                   <span className="text-gray-500 text-base">
