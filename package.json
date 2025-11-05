@@ -12,6 +12,8 @@
     "@deepgram/sdk": "^4.11.2",
     "@ricky0123/vad-react": "^0.0.35",
     "dotenv": "^17.2.3",
+    "grok-sdk": "0.0.1-security",
+    "groq-sdk": "^0.34.0",
     "mic": "^2.1.2",
     "node-record-lpcm16": "^1.0.1",
     "ws": "^8.18.3"

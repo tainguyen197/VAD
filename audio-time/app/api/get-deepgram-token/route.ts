@@ -10,7 +10,6 @@ export async function GET() {
     );
   }
 
-  console.log("DEEPGRAM_API_KEY: ", DEEPGRAM_API_KEY);
   try {
     const response = await fetch("https://api.deepgram.com/v1/auth/grant", {
       method: "POST",
@@ -19,7 +18,7 @@ export async function GET() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        ttl_seconds: 0,
+        ttl_seconds: 3600,
       }),
     });
     // Explicitly handle HTTP errors
