@@ -20,7 +20,7 @@ const getModalByComplexity = (text: string) => {
 };
 
 const translate = async (text: string) => {
-  const prompt = `Just translate the following text to Vietnamese: ${text}`;
+  const prompt = `Just translate the following text to Vietnamese: ${text}, no more, no less, no other text, no other words, no other sentences, no other anything, just the translation`;
   const model = getModalByComplexity(text);
 
   const response = await client.models.generateContent({
