@@ -34,7 +34,6 @@ const useProcessGeminiLive = () => {
         const parts = data.serverContent.modelTurn?.parts || [];
 
         parts.forEach((part: any) => {
-          // Handle text response (Vietnamese translation)
           if (part.text) {
             const transcript: GeminiTranscript = {
               text: part.text,
@@ -51,7 +50,6 @@ const useProcessGeminiLive = () => {
             }
           }
 
-          // Handle audio response (Vietnamese audio)
           if (
             part.inlineData &&
             part.inlineData.mimeType.includes("audio/pcm")

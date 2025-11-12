@@ -136,41 +136,32 @@ const GeminiLiveWebSocketProvider = ({
 
     ws.onmessage = async (event) => {
       try {
-        let data;
-
-        // Check if the message is a Blob
         if (event.data instanceof Blob) {
-          console.log("📨 Received Blob from Gemini:", event.data);
-
-          // Read the blob as text
-          const text = await event.data.text();
-
-          try {
-            // Try to parse as JSON
-            data = JSON.parse(text);
-            console.log("📨 Parsed JSON from Blob:", data);
-          } catch {
-            // If not JSON, treat as raw audio data
-            console.log("📨 Received binary audio Blob");
-            window.dispatchEvent(
-              new CustomEvent("gemini-live-audio-blob", {
-                detail: event.data,
-              })
-            );
-            return;
-          }
+          console.log("📨 Received audio blob from Gemini:", event.data);
+          window.dispatchEvent(
+            new CustomEvent("gemini-live-audio-blob", {
+              detail: event.data,
+            })
+          );
         } else {
-          // It's a text message, parse directly
-          data = JSON.parse(event.data);
-          console.log("📨 Received text message from Gemini:", data);
+          // console.log("📨 Received text message from Gemini:", event.data);
+          // window.dispatchEvent(
+          //   new CustomEvent("gemini-live-message", {
+          //     detail: event.data,
+          //   })
+          // );
+        }
+
+        {
+          console.log("📨 Received text message from Gemini:", event.data);
+          window.dispatchEvent(
+            new CustomEvent("gemini-live-message", {
+              detail: event.data,
+            })
+          );
         }
 
         // Dispatch custom event so components can listen
-        window.dispatchEvent(
-          new CustomEvent("gemini-live-message", {
-            detail: data,
-          })
-        );
       } catch (err) {
         console.error("Error parsing message:", err, event.data);
       }
@@ -206,7 +197,6 @@ const GeminiLiveWebSocketProvider = ({
 
   const sendAudio = useCallback((audio: ArrayBuffer) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      // Convert ArrayBuffer to base64 string
       const bytes = new Uint8Array(audio);
       const binaryString = Array.from(bytes)
         .map((byte) => String.fromCharCode(byte))
@@ -313,6 +303,16 @@ export const useGeminiLiveMessages = (callback: (data: any) => void) => {
     };
     window.addEventListener("gemini-live-message", handler);
     return () => window.removeEventListener("gemini-live-message", handler);
+  }, [callback]);
+};
+
+export const useGeminiLiveAudioBlob = (callback: (data: Blob) => void) => {
+  useEffect(() => {
+    const handler = (e: Event) => {
+      callback((e as CustomEvent).detail);
+    };
+    window.addEventListener("gemini-live-audio-blob", handler);
+    return () => window.removeEventListener("gemini-live-audio-blob", handler);
   }, [callback]);
 };
 

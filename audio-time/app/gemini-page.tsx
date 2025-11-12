@@ -25,6 +25,7 @@ export default function GeminiLivePage() {
     processGeminiMessage,
     clearTranscripts,
   } = useProcessGeminiLive();
+  useGeminiLiveMessages(processGeminiMessage);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -60,6 +61,22 @@ export default function GeminiLivePage() {
     }
   }, [audioChunks]);
 
+  const playAudio = async (audioData: Blob) => {
+    const arrayBuffer = await audioData.arrayBuffer();
+
+    const buffer = await audioContextRef.current?.decodeAudioData(arrayBuffer);
+
+    const source = audioContextRef.current?.createBufferSource();
+
+    if (!source || !buffer || !audioContextRef.current?.destination) return;
+
+    source.buffer = buffer;
+    source?.connect(audioContextRef.current?.destination);
+    source?.start(nextStartTimeRef.current);
+
+    nextStartTimeRef.current += buffer.duration;
+  };
+
   const processAudioQueue = async () => {
     if (isProcessingRef.current || audioQueueRef.current.length === 0) {
       return;
@@ -72,26 +89,8 @@ export default function GeminiLivePage() {
       const chunk = audioQueueRef.current.shift()!;
 
       try {
-        const wavBlob = pcmToWav(chunk.audioData, 24000, 1);
-        const url = URL.createObjectURL(wavBlob);
-
-        await new Promise<void>((resolve, reject) => {
-          const audio = new Audio(url);
-          audioRef.current = audio;
-
-          audio.onended = () => {
-            URL.revokeObjectURL(url);
-            resolve();
-          };
-
-          audio.onerror = (e) => {
-            URL.revokeObjectURL(url);
-            reject(e);
-          };
-
-          audio.play().catch(reject);
-        });
-
+        const audioData = pcmToWav(chunk.audioData!, 24000, 1);
+        playAudio(audioData);
         console.log(`🔊 Played audio chunk`);
       } catch (err) {
         console.error("Error playing audio:", err);
@@ -102,10 +101,6 @@ export default function GeminiLivePage() {
     setIsPlaying(false);
     audioRef.current = null;
   };
-
-  useGeminiLiveMessages((data) => {
-    processGeminiMessage(data);
-  });
 
   const vad = useMicVAD({
     startOnLoad: false,
