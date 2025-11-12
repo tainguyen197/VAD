@@ -52,7 +52,10 @@ const useProcessGeminiLive = () => {
           }
 
           // Handle audio response (Vietnamese audio)
-          if (part.inlineData && part.inlineData.mimeType === "audio/pcm") {
+          if (
+            part.inlineData &&
+            part.inlineData.mimeType.includes("audio/pcm")
+          ) {
             const audioChunk: GeminiAudioChunk = {
               audioData: part.inlineData.data,
               timestamp: Date.now(),

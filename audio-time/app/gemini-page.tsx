@@ -4,9 +4,9 @@ import {
   useGeminiLiveMessages,
   useGeminiLiveWebSocket,
 } from "@/contexts/GeminiLiveWebSocketContext";
-import { floatTo16BitPCM } from "@/app/helpers";
+import { floatTo16BitPCM, pcmToWav } from "@/app/helpers";
 import { useMicVAD } from "@ricky0123/vad-react";
-import { useProcessGeminiLive } from "@/hooks";
+import { GeminiAudioChunk, useProcessGeminiLive } from "@/hooks";
 import { useState, useRef, useEffect } from "react";
 import { VisibilityFade } from "@/components";
 
@@ -16,7 +16,8 @@ const onnxWASMBasePath =
   "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
 
 export default function GeminiLivePage() {
-  const { sendAudio, isConnected, error } = useGeminiLiveWebSocket();
+  const { sendAudio, isConnected, error, sendSpeechStart, sendSpeechEnd } =
+    useGeminiLiveWebSocket();
   const {
     transcripts,
     audioChunks,
@@ -27,62 +28,80 @@ export default function GeminiLivePage() {
 
   const [isPlaying, setIsPlaying] = useState(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const nextStartTimeRef = useRef<number>(0);
+  const isProcessingRef = useRef(false);
+  const audioQueueRef = useRef<GeminiAudioChunk[]>([]);
 
-  // Initialize AudioContext for playing Vietnamese audio
   useEffect(() => {
     if (typeof window !== "undefined") {
+      // Create AudioContext with appropriate sample rate
       audioContextRef.current = new AudioContext({
-        sampleRate: 24000, // Gemini's audio sample rate
+        sampleRate: 24000, // Match Gemini's output
       });
+      nextStartTimeRef.current = 0;
     }
     return () => {
       audioContextRef.current?.close();
     };
   }, []);
 
-  // Play Vietnamese audio when chunks arrive
   useEffect(() => {
-    if (audioChunks.length === 0 || !audioContextRef.current) return;
+    if (audioChunks.length === 0) return;
 
-    const playAudio = async () => {
-      const latestChunk = audioChunks[audioChunks.length - 1];
-      setIsPlaying(true);
+    // Add new chunk to queue
+    const latestChunk = audioChunks[audioChunks.length - 1];
+    audioQueueRef.current.push(latestChunk);
+
+    // Start processing if not already
+    if (!isProcessingRef.current) {
+      // eslint-disable-next-line react-hooks/immutability
+      processAudioQueue();
+    }
+  }, [audioChunks]);
+
+  const processAudioQueue = async () => {
+    if (isProcessingRef.current || audioQueueRef.current.length === 0) {
+      return;
+    }
+
+    isProcessingRef.current = true;
+    setIsPlaying(true);
+
+    while (audioQueueRef.current.length > 0) {
+      const chunk = audioQueueRef.current.shift()!;
 
       try {
-        // Decode base64 audio data
-        const binaryString = atob(latestChunk.audioData);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
+        const wavBlob = pcmToWav(chunk.audioData, 24000, 1);
+        const url = URL.createObjectURL(wavBlob);
 
-        // Convert to AudioBuffer
-        const audioBuffer = audioContextRef.current!.createBuffer(
-          1, // mono
-          bytes.length / 2, // 16-bit PCM
-          24000 // sample rate
-        );
+        await new Promise<void>((resolve, reject) => {
+          const audio = new Audio(url);
+          audioRef.current = audio;
 
-        const channelData = audioBuffer.getChannelData(0);
-        for (let i = 0; i < channelData.length; i++) {
-          const int16 = ((bytes[i * 2] | (bytes[i * 2 + 1] << 8)) << 16) >> 16;
-          channelData[i] = int16 / 32768;
-        }
+          audio.onended = () => {
+            URL.revokeObjectURL(url);
+            resolve();
+          };
 
-        // Play the audio
-        const source = audioContextRef.current!.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContextRef.current!.destination);
-        source.onended = () => setIsPlaying(false);
-        source.start();
+          audio.onerror = (e) => {
+            URL.revokeObjectURL(url);
+            reject(e);
+          };
+
+          audio.play().catch(reject);
+        });
+
+        console.log(`🔊 Played audio chunk`);
       } catch (err) {
         console.error("Error playing audio:", err);
-        setIsPlaying(false);
       }
-    };
+    }
 
-    playAudio();
-  }, [audioChunks]);
+    isProcessingRef.current = false;
+    setIsPlaying(false);
+    audioRef.current = null;
+  };
 
   useGeminiLiveMessages((data) => {
     processGeminiMessage(data);
@@ -94,10 +113,16 @@ export default function GeminiLivePage() {
     onnxWASMBasePath,
     onSpeechEnd: () => {
       console.log("User stopped talking");
+      sendSpeechEnd();
     },
     onFrameProcessed: (probabilities, frame) => {
       if (probabilities.isSpeech < 0.8) return;
+
       sendAudio(floatTo16BitPCM(frame));
+    },
+    onSpeechRealStart: () => {
+      sendSpeechStart();
+      console.log("User started talking");
     },
   });
 
