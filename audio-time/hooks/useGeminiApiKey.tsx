@@ -18,7 +18,7 @@ const useGeminiApiKey = () => {
     }
   }, []);
 
-  return apiKey;
+  return API_KEY;
 };
 
 export default useGeminiApiKey;

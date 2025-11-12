@@ -9,6 +9,10 @@ import { useMicVAD } from "@ricky0123/vad-react";
 import { useProcessTranscript, useProcessTranslate } from "@/hooks";
 import { useState } from "react";
 import { VisibilityFade } from "@/components";
+import {
+  useGeminiLiveMessages,
+  useGeminiLiveWebSocket,
+} from "@/contexts/GeminiLiveWebSocketContext";
 
 const baseAssetPath =
   "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/";
@@ -17,10 +21,22 @@ const onnxWASMBasePath =
 
 export default function Home() {
   const { sendAudio, isConnected } = useDeepgramWebSocket();
+  const { sendText } = useGeminiLiveWebSocket();
+
   const { processTranscript, sentences } = useProcessTranscript();
   const { translations } = useProcessTranslate(sentences);
+  const [geminiTranscript, setGeminiTranscript] = useState<string>("");
 
   const [interimText, setInterimText] = useState<string>("");
+
+  useGeminiLiveMessages((data) => {
+    console.log("🌟 Processing Gemini message:", data);
+    const newText = data.serverContent.modelTurn?.parts[0].text;
+    console.log("🌟 New Gemini transcript:", newText);
+    if (newText) {
+      setGeminiTranscript((prev) => prev + newText);
+    }
+  });
 
   useDeepgramMessages((data) => {
     if (data.type !== "Results") return;
@@ -29,6 +45,9 @@ export default function Home() {
     if (data.is_final) {
       processTranscript(newText);
       setInterimText("");
+      sendText(newText);
+
+      // send text to gemini
     } else {
       setInterimText(newText);
     }
@@ -159,7 +178,7 @@ export default function Home() {
                     Live
                   </span>
                 </div>
-                <p className="text-gray-300 text-sm leading-relaxed">
+                <p className="text-gray-300 leading-relaxed text-md">
                   {interimText || "Speak to see real-time transcription..."}
                 </p>
               </div>
@@ -179,7 +198,7 @@ export default function Home() {
                 </div>
                 <div className="p-3 rounded-lg border border-gray-800 bg-gray-900/30">
                   <div className="text-2xl font-bold text-white">
-                    {displaySentences.length}
+                    {sentences.length}
                   </div>
                   <div className="text-xs text-gray-500 mt-1">Displayed</div>
                 </div>
@@ -221,68 +240,9 @@ export default function Home() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-8">
-            {displaySentences.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="w-16 h-16 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto mb-4">
-                    <svg
-                      className="w-8 h-8 text-gray-600"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z"
-                      />
-                    </svg>
-                  </div>
-                  <p className="text-gray-400 text-base mb-2">
-                    No translation yet
-                  </p>
-                  <p className="text-gray-600 text-sm">
-                    Click &quot;Start Listening&quot; to begin transcribing
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-6 max-w-4xl">
-                {displaySentences.map((sentence, index) => {
-                  const sentenceNumber =
-                    sentences.length - displaySentences.length + index + 1;
-
-                  return (
-                    <VisibilityFade key={index}>
-                      <div className="group">
-                        <div className="flex gap-4">
-                          <span className="text-sm text-gray-600 font-mono mt-1 select-none flex-shrink-0">
-                            {String(sentenceNumber).padStart(2, "0")}
-                          </span>
-                          <div className="flex-1 space-y-3">
-                            {/* Translation - Prominent */}
-                            <div className="p-3 rounded-xl border border-gray-800 bg-gradient-to-br from-gray-900/50 to-gray-900/30 hover:border-gray-700 transition-colors">
-                              <p className="text-white text-md leading-relaxed">
-                                {translations[index] || (
-                                  <span className="text-gray-500 text-base">
-                                    Translating...
-                                  </span>
-                                )}
-                              </p>
-                            </div>
-                            {/* Original - Subtle */}
-                            <div className="pl-5 border-l-2 border-gray-800">
-                              <p className="text-gray-500 text-sm leading-relaxed">
-                                {sentence}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </VisibilityFade>
-                  );
-                })}
+            {geminiTranscript.length > 0 && (
+              <div className="text-gray-300 text-md leading-relaxed">
+                {geminiTranscript}
               </div>
             )}
           </div>

@@ -92,7 +92,12 @@ const DeepgramWebSocketProvider = ({
   return (
     <DeepgramWebSocketContext.Provider
       // eslint-disable-next-line react-hooks/refs
-      value={{ isConnected, sendAudio, disconnect, ws: wsRef.current }}
+      value={{
+        isConnected,
+        sendAudio,
+        disconnect,
+        ws: wsRef.current,
+      }}
     >
       {children}
     </DeepgramWebSocketContext.Provider>
