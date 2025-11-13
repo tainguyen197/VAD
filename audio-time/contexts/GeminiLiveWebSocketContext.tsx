@@ -137,12 +137,26 @@ const GeminiLiveWebSocketProvider = ({
     ws.onmessage = async (event) => {
       try {
         if (event.data instanceof Blob) {
-          console.log("📨 Received audio blob from Gemini:", event.data);
-          window.dispatchEvent(
-            new CustomEvent("gemini-live-audio-blob", {
-              detail: event.data,
-            })
-          );
+          const text = await event.data.text();
+          console.log(`🔊 Received text: ${text}`);
+          const dataObject = JSON.parse(text);
+
+          const mimeType =
+            dataObject?.serverContent?.modelTurn?.parts[0]?.inlineData
+              ?.mimeType;
+          const data =
+            dataObject?.serverContent?.modelTurn?.parts[0]?.inlineData?.data;
+
+          if (mimeType?.includes("audio/pcm")) {
+            window.dispatchEvent(
+              new CustomEvent("gemini-live-audio", {
+                detail: {
+                  mimeType,
+                  data,
+                },
+              })
+            );
+          }
         } else {
           // console.log("📨 Received text message from Gemini:", event.data);
           // window.dispatchEvent(
@@ -153,7 +167,7 @@ const GeminiLiveWebSocketProvider = ({
         }
 
         {
-          console.log("📨 Received text message from Gemini:", event.data);
+          // console.log("📨 Received text message from Gemini:", event.data);
           window.dispatchEvent(
             new CustomEvent("gemini-live-message", {
               detail: event.data,
@@ -234,7 +248,7 @@ const GeminiLiveWebSocketProvider = ({
       },
     };
 
-    wsRef.current.send(JSON.stringify(message));
+    wsRef.current?.send(JSON.stringify(message));
   }, []);
 
   const sendSpeechStart = useCallback(() => {
@@ -306,13 +320,15 @@ export const useGeminiLiveMessages = (callback: (data: any) => void) => {
   }, [callback]);
 };
 
-export const useGeminiLiveAudioBlob = (callback: (data: Blob) => void) => {
+export const useGeminiLiveAudio = (
+  callback: (data: { mimeType: string; data: string }) => void
+) => {
   useEffect(() => {
     const handler = (e: Event) => {
       callback((e as CustomEvent).detail);
     };
-    window.addEventListener("gemini-live-audio-blob", handler);
-    return () => window.removeEventListener("gemini-live-audio-blob", handler);
+    window.addEventListener("gemini-live-audio", handler);
+    return () => window.removeEventListener("gemini-live-audio", handler);
   }, [callback]);
 };
 
