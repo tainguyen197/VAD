@@ -16,7 +16,7 @@
   --animate-fadeOut: fadeOut 0.8s ease-out;
 }
 
-/* Define the keyframes */
+/* Define the keyframes */  
 @keyframes fadeIn {
   0% {
     opacity: 0;
@@ -33,6 +33,33 @@
   100% {
     opacity: 0;
   }
+}
+
+@keyframes waveformPulse {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+}
+
+.wave-bar-active {
+  height: 100%;
+  animation: waveformPulse 1.2s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+
+.wave-bar-idle {
+  height: 40%;
+  opacity: 0.35;
+}
+
+.wave-bar-idle {
+  transform-origin: center bottom;
 }
 
 @media (prefers-color-scheme: dark) {

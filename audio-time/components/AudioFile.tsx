@@ -63,7 +63,7 @@ const AudioFile = () => {
 
     sendSpeechStart();
 
-    for (let i = 0; i < totalSamples / 4; i += chunkSize) {
+    for (let i = 0; i < totalSamples; i += chunkSize) {
       console.log(`🔊 Sending audio chunk ${i}`);
       const chunkEnd = Math.min(i + chunkSize, totalSamples);
       const chunk = int16Array.slice(i, chunkEnd);
