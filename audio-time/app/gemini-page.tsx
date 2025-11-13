@@ -1,14 +1,13 @@
 "use client";
 
 import {
-  useGeminiLiveMessages,
+  useGeminiLiveAudio,
   useGeminiLiveWebSocket,
 } from "@/contexts/GeminiLiveWebSocketContext";
 import { floatTo16BitPCM, pcmToWav } from "@/app/helpers";
 import { useMicVAD } from "@ricky0123/vad-react";
-import { GeminiAudioChunk, useProcessGeminiLive } from "@/hooks";
-import { useState, useRef, useEffect } from "react";
 import { VisibilityFade } from "@/components";
+import useAudio from "@/hooks/useAudio";
 
 const baseAssetPath =
   "https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.27/dist/";
@@ -18,89 +17,15 @@ const onnxWASMBasePath =
 export default function GeminiLivePage() {
   const { sendAudio, isConnected, error, sendSpeechStart, sendSpeechEnd } =
     useGeminiLiveWebSocket();
-  const {
-    transcripts,
-    audioChunks,
-    interimTranscript,
-    processGeminiMessage,
-    clearTranscripts,
-  } = useProcessGeminiLive();
-  useGeminiLiveMessages(processGeminiMessage);
 
-  const [isPlaying, setIsPlaying] = useState(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-  const nextStartTimeRef = useRef<number>(0);
-  const isProcessingRef = useRef(false);
-  const audioQueueRef = useRef<GeminiAudioChunk[]>([]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Create AudioContext with appropriate sample rate
-      audioContextRef.current = new AudioContext({
-        sampleRate: 24000, // Match Gemini's output
-      });
-      nextStartTimeRef.current = 0;
-    }
-    return () => {
-      audioContextRef.current?.close();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (audioChunks.length === 0) return;
-
-    // Add new chunk to queue
-    const latestChunk = audioChunks[audioChunks.length - 1];
-    audioQueueRef.current.push(latestChunk);
-
-    // Start processing if not already
-    if (!isProcessingRef.current) {
-      // eslint-disable-next-line react-hooks/immutability
-      processAudioQueue();
-    }
-  }, [audioChunks]);
-
-  const playAudio = async (audioData: Blob) => {
-    const arrayBuffer = await audioData.arrayBuffer();
-
-    const buffer = await audioContextRef.current?.decodeAudioData(arrayBuffer);
-
-    const source = audioContextRef.current?.createBufferSource();
-
-    if (!source || !buffer || !audioContextRef.current?.destination) return;
-
-    source.buffer = buffer;
-    source?.connect(audioContextRef.current?.destination);
-    source?.start(nextStartTimeRef.current);
-
-    nextStartTimeRef.current += buffer.duration;
-  };
-
-  const processAudioQueue = async () => {
-    if (isProcessingRef.current || audioQueueRef.current.length === 0) {
-      return;
-    }
-
-    isProcessingRef.current = true;
-    setIsPlaying(true);
-
-    while (audioQueueRef.current.length > 0) {
-      const chunk = audioQueueRef.current.shift()!;
-
-      try {
-        const audioData = pcmToWav(chunk.audioData!, 24000, 1);
-        playAudio(audioData);
-        console.log(`🔊 Played audio chunk`);
-      } catch (err) {
-        console.error("Error playing audio:", err);
-      }
-    }
-
-    isProcessingRef.current = false;
-    setIsPlaying(false);
-    audioRef.current = null;
-  };
+  const { addAudioChunk } = useAudio({
+    autoPlay: true,
+    sampleRate: 24000,
+  });
+  useGeminiLiveAudio((audio) => {
+    const blob = pcmToWav(audio.data, 24000, 1);
+    addAudioChunk(blob);
+  });
 
   const vad = useMicVAD({
     startOnLoad: false,
@@ -210,7 +135,7 @@ export default function GeminiLivePage() {
                   Pause
                 </button>
                 <button
-                  onClick={clearTranscripts}
+                  onClick={() => {}}
                   className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gray-900 hover:bg-gray-800 text-white text-sm font-medium rounded-lg transition-colors border border-gray-800"
                 >
                   <svg
@@ -247,21 +172,6 @@ export default function GeminiLivePage() {
               </div>
             )}
 
-            {isPlaying && (
-              <div className="mb-6 p-3 rounded-lg bg-purple-500/10 border border-purple-500/20">
-                <div className="flex items-center gap-2">
-                  <div className="flex gap-0.5">
-                    <div className="w-1 h-3 bg-purple-500 rounded-full animate-pulse" />
-                    <div className="w-1 h-4 bg-purple-500 rounded-full animate-pulse delay-75" />
-                    <div className="w-1 h-3 bg-purple-500 rounded-full animate-pulse delay-150" />
-                  </div>
-                  <span className="text-xs text-purple-400 font-medium">
-                    Playing Vietnamese audio...
-                  </span>
-                </div>
-              </div>
-            )}
-
             {/* Live Translation */}
             <div className="mb-6">
               <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
@@ -275,8 +185,7 @@ export default function GeminiLivePage() {
                   </span>
                 </div>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  {interimTranscript ||
-                    "Speak in English to see Vietnamese translation..."}
+                  {"Speak in English to see Vietnamese translation..."}
                 </p>
               </div>
             </div>
@@ -288,15 +197,11 @@ export default function GeminiLivePage() {
               </h2>
               <div className="grid grid-cols-2 gap-2">
                 <div className="p-3 rounded-lg border border-gray-800 bg-gray-900/30">
-                  <div className="text-2xl font-bold text-white">
-                    {transcripts.length}
-                  </div>
+                  <div className="text-2xl font-bold text-white">{0}</div>
                   <div className="text-xs text-gray-500 mt-1">Translations</div>
                 </div>
                 <div className="p-3 rounded-lg border border-gray-800 bg-gray-900/30">
-                  <div className="text-2xl font-bold text-white">
-                    {audioChunks.length}
-                  </div>
+                  <div className="text-2xl font-bold text-white">{0}</div>
                   <div className="text-xs text-gray-500 mt-1">Audio Chunks</div>
                 </div>
               </div>
@@ -324,13 +229,11 @@ export default function GeminiLivePage() {
                   Real-time English to Vietnamese translation
                 </p>
               </div>
-              {transcripts.length > 0 && (
+              {0 > 0 && (
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-white">
-                    {transcripts.length}
-                  </div>
+                  <div className="text-2xl font-bold text-white">{0}</div>
                   <div className="text-xs text-gray-500">
-                    {transcripts.length === 1 ? "translation" : "translations"}
+                    {0 === 1 ? "translation" : "translations"}
                   </div>
                 </div>
               )}
@@ -338,7 +241,7 @@ export default function GeminiLivePage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-8">
-            {transcripts.length === 0 ? (
+            {0 === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <div className="w-16 h-16 rounded-full bg-gray-900 border border-gray-800 flex items-center justify-center mx-auto mb-4">

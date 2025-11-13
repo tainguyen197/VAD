@@ -6,15 +6,13 @@ import {
   useGeminiLiveAudio,
   useGeminiLiveWebSocket,
 } from "@/contexts/GeminiLiveWebSocketContext";
-import { useEffect, useRef, useState } from "react";
+import useAudio from "@/hooks/useAudio";
 
 const AudioFile = () => {
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const nextStartTimeRef = useRef<number>(0);
-
-  const [audioChunks, setAudioChunks] = useState<
-    { audioData: Blob; timestamp: number }[]
-  >([]);
+  const { addAudioChunk } = useAudio({
+    autoPlay: true,
+    sampleRate: 24000,
+  });
 
   const { sendAudio, sendSpeechStart, sendSpeechEnd } =
     useGeminiLiveWebSocket();
@@ -24,32 +22,8 @@ const AudioFile = () => {
     // base64 to blob
     const blob = pcmToWav(audio.data, 24000, 1);
 
-    setAudioChunks((prev) => [
-      ...prev,
-      { audioData: blob, timestamp: Date.now() },
-    ]);
+    addAudioChunk(blob);
   });
-
-  const playAudio = async (audioData: Blob) => {
-    console.log(
-      "🔊 Playing audio at time:",
-      nextStartTimeRef.current,
-      audioData
-    );
-    const arrayBuffer = await audioData.arrayBuffer();
-
-    const buffer = await audioContextRef.current?.decodeAudioData(arrayBuffer);
-
-    const source = audioContextRef.current?.createBufferSource();
-
-    if (!source || !buffer || !audioContextRef.current?.destination) return;
-
-    source.buffer = buffer;
-    source?.connect(audioContextRef.current?.destination);
-    source?.start(nextStartTimeRef.current);
-
-    nextStartTimeRef.current += buffer.duration;
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,31 +64,6 @@ const AudioFile = () => {
 
     sendSpeechEnd();
   };
-
-  useEffect(() => {
-    if (audioChunks.length === 0) return;
-
-    //get first chunk
-    const firstChunk = audioChunks[0];
-    playAudio(firstChunk.audioData);
-
-    // remove first chunk
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAudioChunks((prev) => prev.slice(1));
-  }, [audioChunks]);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      // Create AudioContext with appropriate sample rate
-      audioContextRef.current = new AudioContext({
-        sampleRate: 24000, // Match Gemini's output
-      });
-      nextStartTimeRef.current = 0;
-    }
-    return () => {
-      audioContextRef.current?.close();
-    };
-  }, []);
 
   return (
     <div>

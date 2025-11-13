@@ -207,7 +207,7 @@ const GeminiLiveWebSocketProvider = ({
       globalWebSocket = null;
       isConnecting = false;
     };
-  }, [apiKey]);
+  }, []);
 
   const sendAudio = useCallback((audio: ArrayBuffer) => {
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
