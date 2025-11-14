@@ -4,6 +4,7 @@ import { audioFileToPCM } from "@/app/helpers/audioFileToPCM";
 import { pcmToWav } from "@/app/helpers/pcmToWav";
 import {
   useGeminiLiveAudio,
+  useGeminiLiveMessages,
   useGeminiLiveWebSocket,
 } from "@/contexts/GeminiLiveWebSocketContext";
 import useAudio from "@/hooks/useAudio";
@@ -11,7 +12,6 @@ import { useRef, useState } from "react";
 
 const AudioFile = () => {
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isReceiving, setIsReceiving] = useState(false);
   const [fileName, setFileName] = useState<string>("");
   const [progress, setProgress] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -24,17 +24,18 @@ const AudioFile = () => {
   const { sendAudio, sendSpeechStart, sendSpeechEnd } =
     useGeminiLiveWebSocket();
 
-  useGeminiLiveAudio((audio: { mimeType: string; data: string }) => {
-    console.log(`🔊 Received audio: ${audio.mimeType}`);
-    setIsReceiving(true);
+  useGeminiLiveMessages((data) => {
+    // console.log("🌟 Processing Gemini message:", data);
+    // const newText = data.serverContent?.modelTurn?.parts?.[0]?.text;
+    // if (newText) {
+    //   console.log("🌟 New Gemini transcript:", newText);
+    // }
+  });
 
+  useGeminiLiveAudio((audio: { mimeType: string; data: string }) => {
     // base64 to blob
     const blob = pcmToWav(audio.data, 24000, 1);
-
     addAudioChunk(blob);
-
-    // Reset receiving state after a delay
-    setTimeout(() => setIsReceiving(false), 500);
   });
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -64,7 +65,7 @@ const AudioFile = () => {
     sendSpeechStart();
 
     for (let i = 0; i < totalSamples; i += chunkSize) {
-      console.log(`🔊 Sending audio chunk ${i}`);
+      console.log(`🔊 Sending chunk ${i}`);
       const chunkEnd = Math.min(i + chunkSize, totalSamples);
       const chunk = int16Array.slice(i, chunkEnd);
 
@@ -270,18 +271,10 @@ const AudioFile = () => {
         <div className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg">
           <div className="flex items-center space-x-4">
             <div
-              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${
-                isReceiving
-                  ? "bg-purple-100 dark:bg-purple-900/30 animate-pulse"
-                  : "bg-gray-100 dark:bg-gray-700"
-              }`}
+              className={`w-12 h-12 rounded-full flex items-center justify-center transition-all duration-300 ${"bg-purple-100 dark:bg-purple-900/30 animate-pulse"}`}
             >
               <svg
-                className={`w-6 h-6 ${
-                  isReceiving
-                    ? "text-purple-600 dark:text-purple-400"
-                    : "text-gray-400"
-                }`}
+                className={`w-6 h-6 ${"text-purple-600 dark:text-purple-400"}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -299,7 +292,7 @@ const AudioFile = () => {
                 AI Response
               </p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {isReceiving ? "Speaking..." : "Listening"}
+                Speaking...
               </p>
             </div>
           </div>

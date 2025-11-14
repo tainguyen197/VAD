@@ -31,7 +31,7 @@ export default function Home() {
 
   useGeminiLiveMessages((data) => {
     console.log("🌟 Processing Gemini message:", data);
-    const newText = data.serverContent.modelTurn?.parts[0].text;
+    const newText = data.serverContent?.modelTurn?.parts?.[0]?.text;
     console.log("🌟 New Gemini transcript:", newText);
     if (newText) {
       setGeminiTranscript((prev) => prev + newText);

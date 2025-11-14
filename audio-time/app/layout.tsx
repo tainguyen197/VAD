@@ -29,9 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <GeminiProviders>
-          <Providers>{children}</Providers>
-        </GeminiProviders>
+        <GeminiProviders>{children}</GeminiProviders>
       </body>
     </html>
   );

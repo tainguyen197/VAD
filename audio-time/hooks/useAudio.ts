@@ -9,60 +9,58 @@ const useAudio = ({
 }) => {
   const audioContextRef = useRef<AudioContext | null>(null);
   const nextStartTimeRef = useRef<number>(0);
-
-  const [audioChunks, setAudioChunks] = useState<
-    { audioData: Blob; timestamp: number }[]
-  >([]);
+  const audioQueueRef = useRef<Blob[]>([]);
+  const isProcessingRef = useRef<boolean>(false);
 
   const playAudio = async (audioData: Blob) => {
-    console.log(
-      "🔊 Playing audio at time:",
-      nextStartTimeRef.current,
-      audioData
-    );
     const arrayBuffer = await audioData.arrayBuffer();
-
     const buffer = await audioContextRef.current?.decodeAudioData(arrayBuffer);
-
     const source = audioContextRef.current?.createBufferSource();
 
     if (!source || !buffer || !audioContextRef.current?.destination) return;
 
     source.buffer = buffer;
     source?.connect(audioContextRef.current?.destination);
-    source?.start(nextStartTimeRef.current);
 
-    nextStartTimeRef.current += buffer.duration;
+    const startTime = Math.max(
+      nextStartTimeRef.current,
+      audioContextRef.current.currentTime
+    );
+    source.start(startTime);
+
+    nextStartTimeRef.current = startTime + buffer.duration;
+  };
+
+  const processQueue = async () => {
+    if (isProcessingRef.current || !autoPlay) return;
+
+    isProcessingRef.current = true;
+
+    while (audioQueueRef.current.length > 0) {
+      const chunk = audioQueueRef.current.shift();
+      if (chunk) {
+        await playAudio(chunk);
+      }
+    }
+
+    isProcessingRef.current = false;
   };
 
   useEffect(() => {
-    if (audioChunks.length === 0 || !autoPlay) return;
-
-    //get first chunk
-    const firstChunk = audioChunks[0];
-    playAudio(firstChunk.audioData);
-
-    // remove first chunk
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAudioChunks((prev) => prev.slice(1));
-  }, [audioChunks, autoPlay]);
-
-  useEffect(() => {
     if (typeof window !== "undefined") {
-      audioContextRef.current = new AudioContext({
-        sampleRate,
-      });
-      nextStartTimeRef.current = 0;
+      audioContextRef.current = new AudioContext({ sampleRate });
+      nextStartTimeRef.current = audioContextRef.current.currentTime;
     }
 
     return () => {
       audioContextRef.current?.close();
     };
-  }, []);
+  }, [sampleRate]);
 
   return {
     addAudioChunk: (audioData: Blob) => {
-      setAudioChunks((prev) => [...prev, { audioData, timestamp: Date.now() }]);
+      audioQueueRef.current.push(audioData);
+      processQueue();
     },
   };
 };
